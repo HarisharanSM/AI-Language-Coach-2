@@ -1,2 +1,43 @@
-# AI-Language-Coach-2
-Updated Language learning application
+# AI Language Coach
+
+A web app for practicing spoken German with an AI conversation coach powered by Google **Gemini**.
+
+## How it works
+
+1. Click **Start Conversation** — the coach asks a question in German (spoken aloud via the
+   browser's text-to-speech, with the German text logged in the conversation window). The button
+   turns into **End Conversation**, and **Record Answer** becomes enabled.
+2. Click **Record Answer** to start answering in German (the button text becomes bold while
+   recording). Click it again to stop. Your speech is converted to text (via the browser's speech
+   recognition) and logged in the conversation window.
+3. The coach asks a relevant follow-up question based on your answer, and the cycle repeats.
+4. Click **End Conversation** at any time to end the session. The coach analyzes the whole
+   conversation and gives feedback on grammar, sentence structure, and vocabulary.
+
+## Stack
+
+- **Backend:** Python (Flask) + Google Gemini (`google-generativeai`)
+- **Frontend:** Plain HTML/CSS/JS, using the browser's Web Speech API for text-to-speech (asking
+  questions) and speech-to-text (transcribing answers)
+- **Dev environment:** GitHub Codespaces (`.devcontainer/devcontainer.json` included)
+
+## Setup
+
+1. Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
+2. Copy `.env.example` to `.env` and set `GEMINI_API_KEY`.
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Run the app:
+   ```bash
+   python app.py
+   ```
+5. Open the forwarded port (5000) in your browser — use **Google Chrome** for best speech
+   recognition support.
+
+## Notes
+
+- Speech recognition (`SpeechRecognition` / `webkitSpeechRecognition`) is currently best supported
+  in Chrome-based browsers. Firefox/Safari support may be limited or unavailable.
+- Conversation state is kept server-side in the Flask session for the duration of a session.
