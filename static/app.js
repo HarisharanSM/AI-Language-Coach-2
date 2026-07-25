@@ -16,6 +16,7 @@
   let conversationActive = false;
   let isRecording = false;
   let recognition = null;
+  let finalTranscript = "";
   let conversationLog = []; // [{speaker: 'coach'|'user', text: string}]
   let germanVoice = null;
 
@@ -165,24 +166,26 @@
     }
     recognition = new SpeechRecognitionImpl();
     recognition.lang = GERMAN_LANG;
+    recognition.continuous = true;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+    finalTranscript = "";
 
     recognition.onstart = () => {
       isRecording = true;
       recordBtn.classList.add("recording");
       recordBtn.textContent = "Recording... (click to stop)";
-      setStatus("Recording - speak your answer in German.");
+      setStatus("Recording - speak your answer in German. Click again when you're done.");
     };
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript.trim();
-      if (transcript) {
-        addLogEntry("user", transcript);
-        sendAnswerAndGetNextQuestion(transcript);
-      } else {
-        setStatus("Didn't catch that. Click \"Record Answer\" to try again.");
-        recordBtn.disabled = false;
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const segment = event.results[i][0].transcript.trim();
+          if (segment) {
+            finalTranscript = finalTranscript ? `${finalTranscript} ${segment}` : segment;
+          }
+        }
       }
     };
 
@@ -193,13 +196,21 @@
           ? `Recording error: ${friendlyMessage}`
           : `Recording error: ${event.error}. Click "Record Answer" to try again.`
       );
-      recordBtn.disabled = false;
     };
 
     recognition.onend = () => {
       isRecording = false;
       recordBtn.classList.remove("recording");
       recordBtn.textContent = "Record Answer";
+
+      const transcript = finalTranscript.trim();
+      if (transcript) {
+        addLogEntry("user", transcript);
+        sendAnswerAndGetNextQuestion(transcript);
+      } else {
+        setStatus("Didn't catch that. Click \"Record Answer\" to try again.");
+        recordBtn.disabled = false;
+      }
     };
 
     recognition.start();
