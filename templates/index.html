@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Language Coach - German</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>🇩🇪 AI Language Coach</h1>
+      <p class="subtitle">Practice spoken German with an AI conversation partner</p>
+    </header>
+
+    <main class="panel">
+      <div id="status" class="status">Click "Start Conversation" to begin.</div>
+
+      <div id="conversationLog" class="conversation-log" aria-live="polite"></div>
+
+      <div class="controls">
+        <button id="conversationBtn" class="btn btn-primary">Start Conversation</button>
+        <button id="recordBtn" class="btn btn-record" disabled>Record Answer</button>
+      </div>
+    </main>
+
+    <section id="feedbackSection" class="panel feedback-panel hidden">
+      <h2>Conversation Feedback</h2>
+      <div id="feedbackContent" class="feedback-content"></div>
+    </section>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
