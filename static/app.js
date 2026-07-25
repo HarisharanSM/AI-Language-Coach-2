@@ -145,6 +145,19 @@
     }
   }
 
+  const RECOGNITION_ERROR_MESSAGES = {
+    "service-not-allowed":
+      "Microphone access was blocked. If you're viewing this inside an embedded preview " +
+      "(e.g. a Codespaces/VS Code preview pane), open the page in a full browser tab instead, " +
+      "then allow microphone access when prompted.",
+    "not-allowed":
+      "Microphone permission was denied. Click the microphone/lock icon in the address bar and " +
+      "allow access for this site, then try again.",
+    "no-speech": "Didn't catch that - no speech was detected.",
+    "audio-capture": "No microphone was found. Check that a microphone is connected and enabled.",
+    network: "A network error occurred reaching the speech recognition service. Check your connection.",
+  };
+
   function startRecording() {
     if (!SpeechRecognitionImpl) {
       setStatus("Speech recognition is not supported in this browser. Try Chrome.");
@@ -174,7 +187,12 @@
     };
 
     recognition.onerror = (event) => {
-      setStatus(`Recording error: ${event.error}. Click "Record Answer" to try again.`);
+      const friendlyMessage = RECOGNITION_ERROR_MESSAGES[event.error];
+      setStatus(
+        friendlyMessage
+          ? `Recording error: ${friendlyMessage}`
+          : `Recording error: ${event.error}. Click "Record Answer" to try again.`
+      );
       recordBtn.disabled = false;
     };
 

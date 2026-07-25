@@ -41,3 +41,16 @@ A web app for practicing spoken German with an AI conversation coach powered by 
 - Speech recognition (`SpeechRecognition` / `webkitSpeechRecognition`) is currently best supported
   in Chrome-based browsers. Firefox/Safari support may be limited or unavailable.
 - Conversation state is kept server-side in the Flask session for the duration of a session.
+
+## Troubleshooting
+
+**"Recording error: service-not-allowed"** — the browser blocked microphone access for the speech
+recognition service. This almost always happens when the app is opened inside an embedded preview
+frame (e.g. VS Code's "Simple Browser" or the Codespaces port-preview panel), which doesn't grant
+microphone permission to the embedded page. Fix: open the forwarded port URL in a full browser tab
+instead (in Codespaces, use the "Open in Browser" option on the port-forward notification, or copy
+the `https://<codespace-name>-5000.app.github.dev` URL into a new Chrome tab), then allow microphone
+access when prompted.
+
+**"Recording error: not-allowed"** — microphone permission was denied for the site. Click the
+microphone/lock icon in the browser's address bar, allow microphone access, and try again.
