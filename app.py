@@ -1,4 +1,5 @@
 import os
+import random
 import uuid
 
 from dotenv import load_dotenv
@@ -16,34 +17,66 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-CONVERSATION_SYSTEM_PROMPT = """You are "Anna", a friendly and patient German language conversation coach.
-You are having a spoken conversation with a language learner entirely in German (Deutsch).
+# The 12 A1 lesson topics from the vhs-Lernportal A1 course curriculum.
+# All practice scenarios/questions must stay within these topics.
+A1_TOPICS = [
+    "Hallo! Wie geht's? (Begruessung, Small Talk, sich vorstellen)",
+    "Meine Familie und ich (Familie, Verwandte, ueber sich erzaehlen)",
+    "Deutsch lernen (Sprachenlernen, Kurs, Lernen im Alltag)",
+    "Essen und trinken (Lebensmittel, Mahlzeiten, im Restaurant/Supermarkt)",
+    "Mein Tag (Tagesablauf, Uhrzeiten, Alltagsroutine)",
+    "Meine Wohnung (Zimmer, Moebel, Wohnort beschreiben)",
+    "In der Stadt (Orte in der Stadt, Wegbeschreibung, unterwegs sein)",
+    "Arbeit und Beruf (Berufe, Arbeitsalltag, Arbeitsplatz)",
+    "Beim Arzt (Gesundheit, Koerperteile, Termin beim Arzt)",
+    "Gestern und heute (Vergangenheit, was man gestern gemacht hat)",
+    "Was ziehe ich an? (Kleidung, Farben, Wetter passend anziehen)",
+    "Jahreszeiten und Wetter (Jahreszeiten, Wetter, Monate)",
+]
+
+CONVERSATION_SYSTEM_PROMPT = """You are "Anna", a friendly and patient German language conversation coach
+for an A1 (absolute beginner) learner. You are having a spoken conversation with the learner entirely in
+German (Deutsch).
+
+Allowed topics (choose ONLY from this fixed list, matching the learner's A1 course curriculum):
+{topics}
 
 Rules:
 - Respond ONLY in German. Never use English or any other language, and never include translations.
-- Keep every message short: one or two simple sentences, suitable for an A2-B1 level learner.
-- Always end your message with a single, clear, relevant follow-up question that reacts to what the
-  learner just said, so the conversation naturally continues.
+- Use STRICT A1-level language: very short, simple sentences (present tense, basic Perfekt for the
+  "Gestern und heute" topic only), high-frequency everyday vocabulary, no subordinate clauses, no
+  idioms. Assume the learner knows only basic words and simple structures.
+- Every question or scenario you ask about must come from the allowed topics list above. Do not
+  introduce unrelated topics (no politics, abstract opinions, complex hypotheticals, etc.).
+- Keep every message very short: one or two simple sentences.
+- Always end your message with a single, clear, simple follow-up question that reacts to what the
+  learner just said and stays within the allowed topics, so the conversation naturally continues.
 - Do NOT correct the learner's grammar or vocabulary during the conversation - just respond naturally
   and keep the conversation flowing. Detailed feedback is given later, separately.
-- Vary topics naturally (daily life, hobbies, travel, food, work, family, weather, opinions, etc.)
-  based on what the learner says.
+- You may move to another allowed topic after a few exchanges, but never to a topic outside the list.
 - Be warm and encouraging, like a friendly tutor, not a robot."""
 
-START_PROMPT = (
-    "Beginne ein freundliches Gespraech auf Deutsch, um dem Lernenden beim Deutschlernen zu helfen. "
-    "Begruesse den Lernenden kurz und stelle eine einfache Eroeffnungsfrage, um das Gespraech zu starten. "
-    "Halte dich kurz (1-2 Saetze)."
-)
+
+def _build_start_prompt():
+    topic = random.choice(A1_TOPICS)
+    return (
+        "Beginne ein freundliches Gespraech auf Deutsch fuer einen A1-Anfaenger, passend zum Thema: "
+        f'"{topic}". '
+        "Begruesse den Lernenden kurz und stelle eine sehr einfache Eroeffnungsfrage zu diesem Thema, "
+        "um das Gespraech zu starten. Benutze nur einfache A1-Woerter und halte dich kurz (1-2 Saetze)."
+    )
 
 FEEDBACK_PROMPT_TEMPLATE = """You are an expert German language coach. Below is a transcript of a spoken
-German conversation practice session between the coach ("Coach") and a learner ("You").
+German conversation practice session between the coach ("Coach") and an A1-level (absolute beginner)
+learner ("You"), based on the learner's official A1 course topics (greetings, family, learning German,
+food & drink, daily routine, home, city, work, doctor, past tense basics, clothing, seasons & weather).
 
 Transcript:
 {transcript}
 
-Analyze ONLY the learner's ("You") German responses and provide constructive feedback in clear, well
-formatted Markdown, using exactly these sections:
+Analyze ONLY the learner's ("You") German responses, judged against A1-level expectations (simple
+present tense, basic Perfekt, core vocabulary, simple sentence structure), and provide constructive
+feedback in clear, well formatted Markdown, using exactly these sections:
 
 ### Overall Impression
 A short, encouraging summary of how the learner did.
@@ -67,9 +100,10 @@ inventing issues. Be specific and reference the learner's actual sentences."""
 
 
 def _get_model():
+    topics_list = "\n".join(f"- {topic}" for topic in A1_TOPICS)
     return genai.GenerativeModel(
         model_name=GEMINI_MODEL,
-        system_instruction=CONVERSATION_SYSTEM_PROMPT,
+        system_instruction=CONVERSATION_SYSTEM_PROMPT.format(topics=topics_list),
     )
 
 
@@ -92,7 +126,7 @@ def start_conversation():
 
     try:
         chat = _get_model().start_chat(history=[])
-        response = chat.send_message(START_PROMPT)
+        response = chat.send_message(_build_start_prompt())
         question = response.text.strip()
 
         session["history"] = _serialize_history(chat.history)
