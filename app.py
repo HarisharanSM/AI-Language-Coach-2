@@ -9,7 +9,25 @@ import google.generativeai as genai
 load_dotenv()
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+
+# Models to try, in order, for every Gemini request. If a model is unavailable
+# (rate limited, over capacity, or fails for any other reason), the next model
+# in the list is tried until one succeeds or the list is exhausted.
+DEFAULT_GEMINI_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.6-flash",
+]
+_gemini_models_env = os.environ.get("GEMINI_MODELS")
+GEMINI_MODELS = (
+    [m.strip() for m in _gemini_models_env.split(",") if m.strip()]
+    if _gemini_models_env
+    else DEFAULT_GEMINI_MODELS
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
@@ -99,10 +117,10 @@ If the learner did not make a particular type of mistake, briefly say so in that
 inventing issues. Be specific and reference the learner's actual sentences."""
 
 
-def _get_model():
+def _get_model(model_name):
     topics_list = "\n".join(f"- {topic}" for topic in A1_TOPICS)
     return genai.GenerativeModel(
-        model_name=GEMINI_MODEL,
+        model_name=model_name,
         system_instruction=CONVERSATION_SYSTEM_PROMPT.format(topics=topics_list),
     )
 
@@ -124,15 +142,20 @@ def start_conversation():
     if not GEMINI_API_KEY:
         return jsonify({"error": "GEMINI_API_KEY is not configured on the server."}), 500
 
-    try:
-        chat = _get_model().start_chat(history=[])
-        response = chat.send_message(_build_start_prompt())
-        question = response.text.strip()
+    last_error = None
+    for model_name in GEMINI_MODELS:
+        try:
+            chat = _get_model(model_name).start_chat(history=[])
+            response = chat.send_message(_build_start_prompt())
+            question = response.text.strip()
 
-        session["history"] = _serialize_history(chat.history)
-        return jsonify({"question": question})
-    except Exception as exc:  # pragma: no cover - surfaced to the UI
-        return jsonify({"error": str(exc)}), 500
+            session["history"] = _serialize_history(chat.history)
+            return jsonify({"question": question})
+        except Exception as exc:  # pragma: no cover - surfaced to the UI
+            last_error = exc
+            continue
+
+    return jsonify({"error": str(last_error)}), 500
 
 
 @app.route("/api/next", methods=["POST"])
@@ -147,15 +170,20 @@ def next_question():
 
     history = session.get("history", [])
 
-    try:
-        chat = _get_model().start_chat(history=history)
-        response = chat.send_message(answer)
-        question = response.text.strip()
+    last_error = None
+    for model_name in GEMINI_MODELS:
+        try:
+            chat = _get_model(model_name).start_chat(history=history)
+            response = chat.send_message(answer)
+            question = response.text.strip()
 
-        session["history"] = _serialize_history(chat.history)
-        return jsonify({"question": question})
-    except Exception as exc:  # pragma: no cover - surfaced to the UI
-        return jsonify({"error": str(exc)}), 500
+            session["history"] = _serialize_history(chat.history)
+            return jsonify({"question": question})
+        except Exception as exc:  # pragma: no cover - surfaced to the UI
+            last_error = exc
+            continue
+
+    return jsonify({"error": str(last_error)}), 500
 
 
 @app.route("/api/end", methods=["POST"])
@@ -172,15 +200,20 @@ def end_conversation():
     ]
     transcript = "\n".join(transcript_lines) if transcript_lines else "(no conversation recorded)"
 
-    try:
-        model = genai.GenerativeModel(model_name=GEMINI_MODEL)
-        response = model.generate_content(FEEDBACK_PROMPT_TEMPLATE.format(transcript=transcript))
-        feedback = response.text.strip()
+    last_error = None
+    for model_name in GEMINI_MODELS:
+        try:
+            model = genai.GenerativeModel(model_name=model_name)
+            response = model.generate_content(FEEDBACK_PROMPT_TEMPLATE.format(transcript=transcript))
+            feedback = response.text.strip()
 
-        session.pop("history", None)
-        return jsonify({"feedback": feedback})
-    except Exception as exc:  # pragma: no cover - surfaced to the UI
-        return jsonify({"error": str(exc)}), 500
+            session.pop("history", None)
+            return jsonify({"feedback": feedback})
+        except Exception as exc:  # pragma: no cover - surfaced to the UI
+            last_error = exc
+            continue
+
+    return jsonify({"error": str(last_error)}), 500
 
 
 if __name__ == "__main__":

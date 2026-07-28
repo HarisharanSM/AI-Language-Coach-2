@@ -41,6 +41,10 @@ A web app for practicing spoken German with an AI conversation coach powered by 
 - Speech recognition (`SpeechRecognition` / `webkitSpeechRecognition`) is currently best supported
   in Chrome-based browsers. Firefox/Safari support may be limited or unavailable.
 - Conversation state is kept server-side in the Flask session for the duration of a session.
+- Every Gemini request tries a fixed, ordered list of models — Gemini 2.5 Flash, 2.5 Flash Lite,
+  3 Flash, 3.1 Flash Lite, 3.5 Flash, 3.5 Flash Lite, and 3.6 Flash — and automatically falls back to
+  the next model if one is unavailable (rate limited, over capacity, or fails for any other reason).
+  Override the list with the `GEMINI_MODELS` env var (comma-separated model IDs).
 
 ## Troubleshooting
 
