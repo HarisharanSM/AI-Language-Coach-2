@@ -1,6 +1,6 @@
 # AI Language Coach
 
-A web app for practicing spoken German with an AI conversation coach powered by **Claude** (Anthropic).
+A web app for practicing spoken German with an AI conversation coach powered by Google **Gemini**.
 
 ## How it works
 
@@ -16,15 +16,15 @@ A web app for practicing spoken German with an AI conversation coach powered by 
 
 ## Stack
 
-- **Backend:** Python (Flask) + Claude (`anthropic`)
+- **Backend:** Python (Flask) + Google Gemini (`google-generativeai`)
 - **Frontend:** Plain HTML/CSS/JS, using the browser's Web Speech API for text-to-speech (asking
   questions) and speech-to-text (transcribing answers)
 - **Dev environment:** GitHub Codespaces (`.devcontainer/devcontainer.json` included)
 
 ## Setup
 
-1. Get an API key from the [Anthropic Console](https://console.anthropic.com/).
-2. Copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY`.
+1. Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
+2. Copy `.env.example` to `.env` and set `GEMINI_API_KEY`.
 3. Install dependencies:
    ```bash
    pip install -r requirements.txt

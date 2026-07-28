@@ -2,19 +2,20 @@ import os
 import random
 import uuid
 
-import anthropic
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request, session
+import google.generativeai as genai
 
 load_dotenv()
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-5")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
 
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 # The 12 A1 lesson topics from the vhs-Lernportal A1 course curriculum.
 # All practice scenarios/questions must stay within these topics.
@@ -98,13 +99,19 @@ If the learner did not make a particular type of mistake, briefly say so in that
 inventing issues. Be specific and reference the learner's actual sentences."""
 
 
-def _system_prompt():
+def _get_model():
     topics_list = "\n".join(f"- {topic}" for topic in A1_TOPICS)
-    return CONVERSATION_SYSTEM_PROMPT.format(topics=topics_list)
+    return genai.GenerativeModel(
+        model_name=GEMINI_MODEL,
+        system_instruction=CONVERSATION_SYSTEM_PROMPT.format(topics=topics_list),
+    )
 
 
-def _extract_text(response):
-    return "".join(block.text for block in response.content if block.type == "text").strip()
+def _serialize_history(history):
+    return [
+        {"role": item.role, "parts": [part.text for part in item.parts]}
+        for item in history
+    ]
 
 
 @app.route("/")
@@ -114,22 +121,15 @@ def index():
 
 @app.route("/api/start", methods=["POST"])
 def start_conversation():
-    if not client:
-        return jsonify({"error": "ANTHROPIC_API_KEY is not configured on the server."}), 500
+    if not GEMINI_API_KEY:
+        return jsonify({"error": "GEMINI_API_KEY is not configured on the server."}), 500
 
     try:
-        history = [{"role": "user", "content": _build_start_prompt()}]
-        response = client.messages.create(
-            model=ANTHROPIC_MODEL,
-            max_tokens=1024,
-            system=_system_prompt(),
-            output_config={"effort": "low"},
-            messages=history,
-        )
-        question = _extract_text(response)
+        chat = _get_model().start_chat(history=[])
+        response = chat.send_message(_build_start_prompt())
+        question = response.text.strip()
 
-        history.append({"role": "assistant", "content": question})
-        session["history"] = history
+        session["history"] = _serialize_history(chat.history)
         return jsonify({"question": question})
     except Exception as exc:  # pragma: no cover - surfaced to the UI
         return jsonify({"error": str(exc)}), 500
@@ -137,8 +137,8 @@ def start_conversation():
 
 @app.route("/api/next", methods=["POST"])
 def next_question():
-    if not client:
-        return jsonify({"error": "ANTHROPIC_API_KEY is not configured on the server."}), 500
+    if not GEMINI_API_KEY:
+        return jsonify({"error": "GEMINI_API_KEY is not configured on the server."}), 500
 
     data = request.get_json(silent=True) or {}
     answer = (data.get("answer") or "").strip()
@@ -146,20 +146,13 @@ def next_question():
         return jsonify({"error": "No answer text was provided."}), 400
 
     history = session.get("history", [])
-    history.append({"role": "user", "content": answer})
 
     try:
-        response = client.messages.create(
-            model=ANTHROPIC_MODEL,
-            max_tokens=1024,
-            system=_system_prompt(),
-            output_config={"effort": "low"},
-            messages=history,
-        )
-        question = _extract_text(response)
+        chat = _get_model().start_chat(history=history)
+        response = chat.send_message(answer)
+        question = response.text.strip()
 
-        history.append({"role": "assistant", "content": question})
-        session["history"] = history
+        session["history"] = _serialize_history(chat.history)
         return jsonify({"question": question})
     except Exception as exc:  # pragma: no cover - surfaced to the UI
         return jsonify({"error": str(exc)}), 500
@@ -167,8 +160,8 @@ def next_question():
 
 @app.route("/api/end", methods=["POST"])
 def end_conversation():
-    if not client:
-        return jsonify({"error": "ANTHROPIC_API_KEY is not configured on the server."}), 500
+    if not GEMINI_API_KEY:
+        return jsonify({"error": "GEMINI_API_KEY is not configured on the server."}), 500
 
     data = request.get_json(silent=True) or {}
     log = data.get("log", [])
@@ -180,12 +173,9 @@ def end_conversation():
     transcript = "\n".join(transcript_lines) if transcript_lines else "(no conversation recorded)"
 
     try:
-        response = client.messages.create(
-            model=ANTHROPIC_MODEL,
-            max_tokens=2048,
-            messages=[{"role": "user", "content": FEEDBACK_PROMPT_TEMPLATE.format(transcript=transcript)}],
-        )
-        feedback = _extract_text(response)
+        model = genai.GenerativeModel(model_name=GEMINI_MODEL)
+        response = model.generate_content(FEEDBACK_PROMPT_TEMPLATE.format(transcript=transcript))
+        feedback = response.text.strip()
 
         session.pop("history", None)
         return jsonify({"feedback": feedback})
