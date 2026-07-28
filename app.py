@@ -9,7 +9,7 @@ from flask import Flask, jsonify, render_template, request, session
 load_dotenv()
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-5")
+ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
@@ -123,7 +123,6 @@ def start_conversation():
             model=ANTHROPIC_MODEL,
             max_tokens=1024,
             system=_system_prompt(),
-            output_config={"effort": "low"},
             messages=history,
         )
         question = _extract_text(response)
@@ -153,7 +152,6 @@ def next_question():
             model=ANTHROPIC_MODEL,
             max_tokens=1024,
             system=_system_prompt(),
-            output_config={"effort": "low"},
             messages=history,
         )
         question = _extract_text(response)
