@@ -35,65 +35,75 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", str(uuid.uuid4()))
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# The 12 A1 lesson topics from the vhs-Lernportal A1 course curriculum.
+# The 12 A2 lesson topics from the vhs-Lernportal A2 course curriculum.
 # All practice scenarios/questions must stay within these topics.
-A1_TOPICS = [
-    "Hallo! Wie geht's? (Begruessung, Small Talk, sich vorstellen)",
-    "Meine Familie und ich (Familie, Verwandte, ueber sich erzaehlen)",
-    "Deutsch lernen (Sprachenlernen, Kurs, Lernen im Alltag)",
-    "Essen und trinken (Lebensmittel, Mahlzeiten, im Restaurant/Supermarkt)",
-    "Mein Tag (Tagesablauf, Uhrzeiten, Alltagsroutine)",
-    "Meine Wohnung (Zimmer, Moebel, Wohnort beschreiben)",
-    "In der Stadt (Orte in der Stadt, Wegbeschreibung, unterwegs sein)",
-    "Arbeit und Beruf (Berufe, Arbeitsalltag, Arbeitsplatz)",
-    "Beim Arzt (Gesundheit, Koerperteile, Termin beim Arzt)",
-    "Gestern und heute (Vergangenheit, was man gestern gemacht hat)",
-    "Was ziehe ich an? (Kleidung, Farben, Wetter passend anziehen)",
-    "Jahreszeiten und Wetter (Jahreszeiten, Wetter, Monate)",
+A2_TOPICS = [
+    "Was machen wir am Wochenende? (Freizeitplaene, Vorschlaege machen, Wochenendaktivitaeten)",
+    "Unterwegs (Verkehrsmittel, Fahrkarten, Reisen, sich orientieren)",
+    "Wir ziehen um. (Umzug, neue Wohnung, Wohnungssuche)",
+    "Aemter und Behoerden (Formulare, Termine, amtliche Angelegenheiten)",
+    "Lebenswege (Biografie, wichtige Lebensstationen, ueber die Vergangenheit erzaehlen)",
+    "Jobsuche und Bewerbung (Stellenanzeigen, Lebenslauf, Vorstellungsgespraech)",
+    "Im Kaufhaus (Einkaufen, Kleidung, Groessen, Umtausch, Reklamation)",
+    "Am Arbeitsplatz (Arbeitsalltag, Kolleg*innen, Aufgaben, Arbeitszeiten)",
+    "Schulzeit (Schule frueher, Erinnerungen, Faecher, Lehrer*innen)",
+    "Gesund und fit (Gesundheit, Sport, Ernaehrung, beim Arzt)",
+    "Mein Bankkonto (Bank, Konto eroeffnen, Geld ueberweisen, Zahlungen)",
+    "Sport, Spass und Spiel (Sportarten, Hobbys, Freizeitaktivitaeten)",
 ]
 
 CONVERSATION_SYSTEM_PROMPT = """You are "Anna", a friendly and patient German language conversation coach
-for an A1 (absolute beginner) learner. You are having a spoken conversation with the learner entirely in
+for an A2 (elementary/waystage) learner. You are having a spoken conversation with the learner entirely in
 German (Deutsch).
 
-Allowed topics (choose ONLY from this fixed list, matching the learner's A1 course curriculum):
+Allowed topics (choose ONLY from this fixed list, matching the learner's A2 course curriculum):
 {topics}
 
 Rules:
 - Respond ONLY in German. Never use English or any other language, and never include translations.
-- Use STRICT A1-level language: very short, simple sentences (present tense, basic Perfekt for the
-  "Gestern und heute" topic only), high-frequency everyday vocabulary, no subordinate clauses, no
-  idioms. Assume the learner knows only basic words and simple structures.
+- Use A2-level language: moderately short, clear sentences. You may use Perfekt and simple Praeteritum
+  (e.g. "war", "hatte", modal verbs) for talking about the past, modal verbs (koennen, muessen, wollen,
+  sollen, duerfen, moechten), simple subordinate clauses with "weil", "dass", or "wenn", and basic
+  comparatives. Use everyday vocabulary related to the allowed topics (travel, moving house, offices,
+  jobs, shopping, workplace, school, health, banking, sports). Avoid complex or literary language,
+  idioms, and rare vocabulary. Assume the learner has a basic but solid foundation (has completed A1).
 - Every question or scenario you ask about must come from the allowed topics list above. Do not
   introduce unrelated topics (no politics, abstract opinions, complex hypotheticals, etc.).
-- Keep every message very short: one or two simple sentences.
-- Always end your message with a single, clear, simple follow-up question that reacts to what the
-  learner just said and stays within the allowed topics, so the conversation naturally continues.
+- Keep every message short: one to three sentences.
+- Always end your message with a single, clear follow-up question that reacts to what the learner just
+  said and stays within the allowed topics, so the conversation naturally continues.
 - Do NOT correct the learner's grammar or vocabulary during the conversation - just respond naturally
   and keep the conversation flowing. Detailed feedback is given later, separately.
 - You may move to another allowed topic after a few exchanges, but never to a topic outside the list.
 - Be warm and encouraging, like a friendly tutor, not a robot."""
 
 
+def _pick_topic():
+    topic_number = random.randint(1, 12)  # random integer in [1, 12], both boundaries included
+    return A2_TOPICS[topic_number - 1]
+
+
 def _build_start_prompt():
-    topic = random.choice(A1_TOPICS)
+    topic = _pick_topic()
     return (
-        "Beginne ein freundliches Gespraech auf Deutsch fuer einen A1-Anfaenger, passend zum Thema: "
+        "Beginne ein freundliches Gespraech auf Deutsch fuer einen A2-Lernenden, passend zum Thema: "
         f'"{topic}". '
-        "Begruesse den Lernenden kurz und stelle eine sehr einfache Eroeffnungsfrage zu diesem Thema, "
-        "um das Gespraech zu starten. Benutze nur einfache A1-Woerter und halte dich kurz (1-2 Saetze)."
+        "Begruesse den Lernenden kurz und stelle eine klare Eroeffnungsfrage zu diesem Thema, um das "
+        "Gespraech zu starten. Benutze A2-Niveau-Deutsch und halte dich kurz (1-3 Saetze)."
     )
 
 FEEDBACK_PROMPT_TEMPLATE = """You are an expert German language coach. Below is a transcript of a spoken
-German conversation practice session between the coach ("Coach") and an A1-level (absolute beginner)
-learner ("You"), based on the learner's official A1 course topics (greetings, family, learning German,
-food & drink, daily routine, home, city, work, doctor, past tense basics, clothing, seasons & weather).
+German conversation practice session between the coach ("Coach") and an A2-level (elementary/waystage)
+learner ("You"), based on the learner's official A2 course topics (weekend plans, getting around,
+moving house, offices/authorities, life stories, job search, shopping, workplace, school days, health
+and fitness, banking, sports and hobbies).
 
 Transcript:
 {transcript}
 
-Analyze ONLY the learner's ("You") German responses, judged against A1-level expectations (simple
-present tense, basic Perfekt, core vocabulary, simple sentence structure), and provide constructive
+Analyze ONLY the learner's ("You") German responses, judged against A2-level expectations (Perfekt and
+simple Praeteritum, modal verbs, simple subordinate clauses with weil/dass/wenn, basic comparatives,
+everyday topic-related vocabulary, and generally correct word order), and provide constructive
 feedback in clear, well formatted Markdown, using exactly these sections:
 
 ### Overall Impression
@@ -118,7 +128,7 @@ inventing issues. Be specific and reference the learner's actual sentences."""
 
 
 def _get_model(model_name):
-    topics_list = "\n".join(f"- {topic}" for topic in A1_TOPICS)
+    topics_list = "\n".join(f"- {topic}" for topic in A2_TOPICS)
     return genai.GenerativeModel(
         model_name=model_name,
         system_instruction=CONVERSATION_SYSTEM_PROMPT.format(topics=topics_list),
