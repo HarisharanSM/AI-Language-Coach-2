@@ -232,6 +232,38 @@
     const escapeHtml = (s) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+    const formatInline = (line) => escapeHtml(line).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+    const parseTableRow = (line) =>
+      line
+        .trim()
+        .replace(/^\|/, "")
+        .replace(/\|$/, "")
+        .split("|")
+        .map((cell) => cell.trim());
+
+    const isTableSeparatorRow = (line) => {
+      const cells = parseTableRow(line);
+      return cells.length > 0 && cells.every((cell) => /^:?-+:?$/.test(cell));
+    };
+
+    const renderTable = (headerCells, bodyRows) => {
+      let table = "<table><thead><tr>";
+      for (const cell of headerCells) {
+        table += `<th>${formatInline(cell)}</th>`;
+      }
+      table += "</tr></thead><tbody>";
+      for (const row of bodyRows) {
+        table += "<tr>";
+        for (let c = 0; c < headerCells.length; c++) {
+          table += `<td>${formatInline(row[c] || "")}</td>`;
+        }
+        table += "</tr>";
+      }
+      table += "</tbody></table>";
+      return table;
+    };
+
     const lines = md.split("\n");
     let html = "";
     let inList = false;
@@ -243,14 +275,28 @@
       }
     };
 
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
       if (!line) {
         closeList();
         continue;
       }
-      let text = escapeHtml(line);
-      text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+      if (line.startsWith("|") && i + 1 < lines.length && isTableSeparatorRow(lines[i + 1])) {
+        closeList();
+        const headerCells = parseTableRow(line);
+        const bodyRows = [];
+        i += 2; // skip header row and separator row
+        while (i < lines.length && lines[i].trim().startsWith("|")) {
+          bodyRows.push(parseTableRow(lines[i]));
+          i++;
+        }
+        i--; // compensate for the outer loop's increment
+        html += renderTable(headerCells, bodyRows);
+        continue;
+      }
+
+      const text = formatInline(line);
 
       if (text.startsWith("### ")) {
         closeList();

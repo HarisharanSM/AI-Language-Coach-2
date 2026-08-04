@@ -103,28 +103,36 @@ Transcript:
 
 Analyze ONLY the learner's ("You") German responses, judged against A2-level expectations (Perfekt and
 simple Praeteritum, modal verbs, simple subordinate clauses with weil/dass/wenn, basic comparatives,
-everyday topic-related vocabulary, and generally correct word order), and provide constructive
-feedback in clear, well formatted Markdown, using exactly these sections:
+everyday topic-related vocabulary, and generally correct word order), and produce the feedback in
+clear, well formatted Markdown, using EXACTLY this structure:
 
-### Overall Impression
-A short, encouraging summary of how the learner did.
+### Overview
+2-4 sentences giving an overall impression of the session: how the learner did, what they should
+focus on improving, and any mistakes that came up more than once (common mistakes).
 
-### Grammar Feedback
-List specific grammar issues you noticed. For each one show the learner's original sentence and a
-corrected version (Original -> Correction), with a one-line explanation.
+### Scorecard
+A Markdown table with exactly these columns: `Category`, `Score (out of 5)`, `Comment`. Include
+exactly these three rows, in this order:
+- `Vocabulary Use (A2)` - how well the learner used A2-appropriate vocabulary for the topics covered.
+- `Pronunciation` - there is no audio available, only the speech-to-text transcript, so infer this
+  from transcription artifacts (garbled, repeated, or oddly-phrased words often indicate the speech
+  recognizer struggled to understand the learner, which can suggest a pronunciation issue). In the
+  Comment, note that this is an approximate, transcript-based estimate rather than a direct audio
+  assessment.
+- `Sentence Formation` - grammar, word order, and sentence structure.
 
-### Vocabulary Feedback
-Point out any word choice issues and suggest richer or more natural vocabulary, with examples from
-what the learner actually said.
+Score each category from 1 (needs significant work) to 5 (excellent) as a whole number.
 
-### Sentence Structure & Word Order
-Comment on German sentence structure and word order (e.g. verb position), with corrected examples.
+### Detailed Corrections
+A Markdown table with exactly these columns: `My Reply`, `Correct Sentence`, `What to Improve`. Add
+one row for every learner reply that contains a grammar, vocabulary, or word-order issue, quoting the
+learner's original reply verbatim in `My Reply`, a corrected version in `Correct Sentence`, and a
+short one-sentence explanation of the fix in `What to Improve`. If a reply was already correct, skip
+it - do not add a row for it. If every reply was correct, include a single row saying so instead of
+leaving the table empty.
 
-### Next Steps
-2-3 concrete, encouraging tips for what to practice next.
-
-If the learner did not make a particular type of mistake, briefly say so in that section instead of
-inventing issues. Be specific and reference the learner's actual sentences."""
+Be specific and reference the learner's actual sentences. Do not invent issues that are not present in
+the transcript."""
 
 
 def _get_model(model_name):
